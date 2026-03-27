@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Generador de Búsquedas Booleanas</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f0f0f;
+    --surface: #1a1a1a;
+    --surface2: #222;
+    --border: #2e2e2e;
+    --border2: #3a3a3a;
+    --text: #e8e6e0;
+    --muted: #888;
+    --hint: #555;
+    --accent: #7c6dfa;
+    --accent-dim: rgba(124,109,250,0.12);
+    --accent-border: rgba(124,109,250,0.35);
+    --success: #3ecf8e;
+    --success-dim: rgba(62,207,142,0.1);
+    --danger: #f87171;
+    --radius: 10px;
+    --radius-sm: 6px;
+    --mono: 'DM Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 14px; min-height: 100vh; line-height: 1.6; }
+  .page { max-width: 780px; margin: 0 auto; padding: 48px 24px 80px; }
+  .header { margin-bottom: 40px; }
+  .header h1 { font-size: 22px; font-weight: 500; letter-spacing: -0.02em; margin-bottom: 6px; }
+  .header p { font-size: 13px; color: var(--muted); }
+  section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 14px; }
+  .section-label { font-size: 11px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 14px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field > label { font-size: 11px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  input[type=text], textarea { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-family: var(--sans); font-size: 13px; padding: 8px 11px; width: 100%; outline: none; transition: border-color .15s; }
+  input[type=text]:focus, textarea:focus { border-color: var(--accent-border); }
+  textarea { resize: vertical; line-height: 1.6; }
+  .tags-wrap { display: flex; flex-wrap: wrap; gap: 5px; padding: 6px 8px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); min-height: 40px; cursor: text; transition: border-color .15s; }
+  .tags-wrap:focus-within { border-color: var(--accent-border); }
+  .tag { display: flex; align-items: center; gap: 4px; background: var(--accent-dim); color: #a89ffc; border: 1px solid var(--accent-border); font-size: 11px; padding: 2px 8px 2px 9px; border-radius: 20px; }
+  .tag button { background: none; border: none; cursor: pointer; color: #7c6dfa; font-size: 15px; line-height: 1; padding: 0; opacity: .7; }
+  .tag button:hover { opacity: 1; }
+  .tag-input { background: transparent; border: none; outline: none; font-size: 13px; color: var(--text); font-family: var(--sans); flex: 1; min-width: 100px; padding: 1px 0; }
+  .pills { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 4px; }
+  .pill { font-size: 12px; padding: 4px 11px; border-radius: 20px; border: 1px solid var(--border2); cursor: pointer; color: var(--muted); background: transparent; transition: all .15s; font-family: var(--sans); }
+  .pill:hover { color: var(--text); }
+  .pill.active { background: var(--accent-dim); color: #a89ffc; border-color: var(--accent-border); }
+  .jd-toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; color: var(--muted); user-select: none; }
+  .jd-toggle input[type=checkbox] { width: 15px; height: 15px; accent-color: var(--accent); cursor: pointer; flex-shrink: 0; }
+  .jd-box { margin-top: 12px; }
+  .hint { font-size: 11px; color: var(--hint); margin-top: 5px; }
+  .generate-btn { width: 100%; padding: 11px; font-size: 13px; font-weight: 500; color: var(--text); background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--radius-sm); cursor: pointer; font-family: var(--sans); letter-spacing: .01em; transition: all .15s; }
+  .generate-btn:hover { border-color: var(--accent-border); color: #a89ffc; }
+  .generate-btn:active { transform: scale(.99); }
+  .generate-btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+  .output-wrap { position: relative; }
+  .output-box { font-size: 13px; font-family: var(--mono); color: var(--text); background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px; line-height: 1.8; white-space: pre-wrap; word-break: break-word; min-height: 90px; }
+  .output-box.empty { color: var(--hint); }
+  .output-box.loading { color: var(--muted); }
+  .output-box.error { color: var(--danger); border-color: rgba(248,113,113,.3); background: rgba(248,113,113,.05); }
+  .copy-btn { position: absolute; top: 8px; right: 8px; font-size: 11px; padding: 4px 10px; border: 1px solid var(--border2); border-radius: var(--radius-sm); background: var(--surface); cursor: pointer; color: var(--muted); font-family: var(--sans); transition: all .15s; }
+  .copy-btn:hover { color: var(--text); }
+  .platform-badge { display: inline-flex; align-items: center; font-size: 10px; font-weight: 500; padding: 3px 9px; border-radius: 20px; background: var(--success-dim); color: var(--success); border: 1px solid rgba(62,207,142,.25); letter-spacing: .04em; text-transform: uppercase; margin-bottom: 10px; }
+  .action-row { display: flex; gap: 8px; margin-top: 10px; }
+  .action-btn { font-size: 12px; padding: 5px 13px; border: 1px solid var(--border2); border-radius: var(--radius-sm); background: transparent; cursor: pointer; color: var(--muted); font-family: var(--sans); transition: all .15s; }
+  .action-btn:hover { color: var(--text); background: var(--surface2); }
+  .action-btn:disabled { opacity: .4; cursor: not-allowed; }
+  .history-label { font-size: 10px; color: var(--hint); margin-bottom: 4px; font-family: var(--sans); text-transform: uppercase; letter-spacing: .05em; }
+  .history-item { font-size: 12px; color: var(--muted); padding: 9px 11px; border: 1px solid var(--border); border-radius: var(--radius-sm); cursor: pointer; font-family: var(--mono); line-height: 1.6; word-break: break-all; margin-bottom: 8px; transition: border-color .15s; }
+  .history-item:hover { border-color: var(--border2); color: var(--text); }
+  @media (max-width: 560px) { .grid2, .grid3 { grid-template-columns: 1fr; } .page { padding: 28px 16px 60px; } }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="header">
+    <h1>Generador de búsquedas booleanas</h1>
+    <p>Powered by Claude · LinkedIn Recruiter · Google X-Ray · GitHub · Indeed</p>
+  </div>
+
+  <section>
+    <div class="section-label">Job description (opcional)</div>
+    <label class="jd-toggle">
+      <input type="checkbox" id="jd-check" onchange="toggleJD(this.checked)">
+      Tengo una job description para pegar
+    </label>
+    <div class="jd-box" id="jd-box" style="display:none">
+      <textarea id="jd-text" style="min-height:130px;font-size:13px;margin-top:8px" placeholder="Pegá acá la job description completa. La IA extrae cargo, skills y contexto automáticamente..."></textarea>
+      <p class="hint">Los campos de abajo son opcionales si pegás la JD. Podés combinar ambos para mayor precisión.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-label">Parámetros</div>
+    <div class="grid2" style="margin-bottom:12px">
+      <div class="field">
+        <label>Cargo / título</label>
+        <input type="text" id="cargo" placeholder="ej: Data Engineer" />
+      </div>
+      <div class="field">
+        <label>Industria</label>
+        <input type="text" id="industria" placeholder="ej: Fintech, SaaS" />
+      </div>
+    </div>
+    <div class="grid3" style="margin-bottom:12px">
+      <div class="field">
+        <label>País / región</label>
+        <input type="text" id="pais" placeholder="ej: Argentina" />
+      </div>
+      <div class="field">
+        <label>Ciudad</label>
+        <input type="text" id="ciudad" placeholder="ej: Buenos Aires" />
+      </div>
+      <div class="field">
+        <label>Modalidad</label>
+        <div class="pills" id="modalidad-pills">
+          <span class="pill active" data-val="">Cualquiera</span>
+          <span class="pill" data-val="remoto">Remoto</span>
+          <span class="pill" data-val="híbrido">Híbrido</span>
+          <span class="pill" data-val="presencial">Presencial</span>
+        </div>
+      </div>
+    </div>
+    <div class="field" style="margin-bottom:12px">
+      <label>Skills requeridos</label>
+      <div class="tags-wrap" id="skills-wrap" onclick="document.getElementById('skills-input').focus()">
+        <input class="tag-input" id="skills-input" placeholder="Escribí un skill y presioná Enter" />
+      </div>
+    </div>
+    <div class="field" style="margin-bottom:12px">
+      <label>Palabras a excluir</label>
+      <div class="tags-wrap" id="excluir-wrap" onclick="document.getElementById('excluir-input').focus()">
+        <input class="tag-input" id="excluir-input" placeholder="ej: junior, trainee, intern" />
+      </div>
+    </div>
+    <div class="grid2" style="margin-bottom:12px">
+      <div class="field">
+        <label>Seniority</label>
+        <div class="pills" id="seniority-pills">
+          <span class="pill" data-val="Junior">Junior</span>
+          <span class="pill" data-val="Semi-senior">Semi-senior</span>
+          <span class="pill active" data-val="Senior">Senior</span>
+          <span class="pill" data-val="Lead">Lead</span>
+          <span class="pill" data-val="Manager">Manager</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>Plataforma</label>
+        <div class="pills" id="plataforma-pills">
+          <span class="pill active" data-val="LinkedIn">LinkedIn</span>
+          <span class="pill" data-val="Google X-Ray">Google X-Ray</span>
+          <span class="pill" data-val="GitHub">GitHub</span>
+          <span class="pill" data-val="Indeed">Indeed</span>
+        </div>
+      </div>
+    </div>
+    <div class="field" style="margin-bottom:16px">
+      <label>Contexto adicional</label>
+      <textarea id="contexto" style="min-height:52px" placeholder="ej: inglés avanzado, experiencia en startups B2B, disponibilidad inmediata"></textarea>
+    </div>
+    <button class="generate-btn" id="gen-btn" onclick="generarBooleano()">Generar búsqueda booleana</button>
+  </section>
+
+  <section id="output-section">
+    <div class="section-label">Resultado</div>
+    <div id="platform-badge" class="platform-badge" style="display:none"></div>
+    <div class="output-wrap">
+      <div class="output-box empty" id="output">Completá los campos y generá tu búsqueda</div>
+      <button class="copy-btn" id="copy-btn" onclick="copiar()" style="display:none">Copiar</button>
+    </div>
+    <div class="action-row" id="action-row" style="display:none">
+      <button class="action-btn" id="refine-btn" onclick="refinar()">Refinar con más sinónimos</button>
+      <button class="action-btn" onclick="limpiarTodo()">Nueva búsqueda</button>
+    </div>
+  </section>
+
+  <section id="history-section" style="display:none">
+    <div class="section-label">Historial</div>
+    <div id="history-list"></div>
+  </section>
+
+</div>
+<script>
+const skillsTags=[], excluirTags=[];
+let lastResult='';
+const history=[];
+
+function setupTagInput(inputId,wrapId,arr){
+  const input=document.getElementById(inputId);
+  const wrap=document.getElementById(wrapId);
+  input.addEventListener('keydown',e=>{
+    if((e.key==='Enter'||e.key===',')&&input.value.trim()){
+      e.preventDefault();addTag(input.value.trim(),arr,wrap,input);
+    } else if(e.key==='Backspace'&&!input.value&&arr.length){
+      arr.pop();wrap.querySelectorAll('.tag').forEach(t=>t.remove());
+      arr.forEach(v=>insertTag(v,arr,wrap,input));
+    }
+  });
+}
+function insertTag(val,arr,wrap,input){
+  const tag=document.createElement('span');tag.className='tag';
+  tag.innerHTML=`${val}<button type="button" onclick="removeTag(this,'${val}','${arr===skillsTags?'skills':'excluir'}')">×</button>`;
+  wrap.insertBefore(tag,input);
+}
+function addTag(val,arr,wrap,input){
+  if(!arr.includes(val)){arr.push(val);insertTag(val,arr,wrap,input);}input.value='';
+}
+function removeTag(btn,val,which){
+  const arr=which==='skills'?skillsTags:excluirTags;
+  const i=arr.indexOf(val);if(i>-1)arr.splice(i,1);btn.closest('.tag').remove();
+}
+setupTagInput('skills-input','skills-wrap',skillsTags);
+setupTagInput('excluir-input','excluir-wrap',excluirTags);
+
+document.querySelectorAll('#seniority-pills .pill').forEach(p=>{
+  p.addEventListener('click',()=>{
+    document.querySelectorAll('#seniority-pills .pill').forEach(x=>x.classList.remove('active'));
+    p.classList.toggle('active');
+  });
+});
+['plataforma-pills','modalidad-pills'].forEach(id=>{
+  document.querySelectorAll(`#${id} .pill`).forEach(p=>{
+    p.addEventListener('click',()=>{
+      document.querySelectorAll(`#${id} .pill`).forEach(x=>x.classList.remove('active'));
+      p.classList.add('active');
+    });
+  });
+});
+
+function toggleJD(on){document.getElementById('jd-box').style.display=on?'block':'none';}
+
+function buildPrompt(refine=false){
+  const cargo=document.getElementById('cargo').value.trim();
+  const industria=document.getElementById('industria').value.trim();
+  const pais=document.getElementById('pais').value.trim();
+  const ciudad=document.getElementById('ciudad').value.trim();
+  const contexto=document.getElementById('contexto').value.trim();
+  const jd=document.getElementById('jd-text').value.trim();
+  const jdActivo=document.getElementById('jd-check').checked&&jd.length>20;
+  const seniority=document.querySelector('#seniority-pills .pill.active')?.dataset.val||'';
+  const plataforma=document.querySelector('#plataforma-pills .pill.active')?.dataset.val||'LinkedIn';
+  const modalidad=document.querySelector('#modalidad-pills .pill.active')?.dataset.val||'';
+  const ubicacion=[ciudad,pais].filter(Boolean);
+
+  if(refine){
+    return{plataforma,cargo:cargo||'(desde JD)',prompt:`Tengo esta búsqueda booleana para sourcing en ${plataforma}:\n\n${lastResult}\n\nMejorala: agregá más sinónimos y variantes del cargo, asegurate que los operadores AND/OR/NOT sean correctos. Solo devolvé el string mejorado, sin texto adicional.`};
+  }
+
+  return{plataforma,cargo:cargo||'(desde JD)',prompt:`Sos una experta en sourcing y reclutamiento. Generá una búsqueda booleana optimizada para ${plataforma}.
+
+${jdActivo?`JOB DESCRIPTION (extraé skills, cargo y contexto):\n---\n${jd}\n---\n`:''}
+Parámetros:
+- Cargo: ${cargo||'(inferir de la JD)'}
+- Seniority: ${seniority||'no especificado'}
+- Industria: ${industria||'cualquiera'}
+- Ubicación: ${ubicacion.length?ubicacion.join(', '):'no especificada'}
+- Modalidad: ${modalidad||'no especificada'}
+- Skills requeridos: ${skillsTags.length?skillsTags.join(', '):jdActivo?'(inferir de la JD)':'no especificados'}
+- Palabras a excluir: ${excluirTags.length?excluirTags.join(', '):'ninguna'}
+- Contexto adicional: ${contexto||'ninguno'}
+
+Reglas:
+- AND, OR, NOT en mayúsculas
+- Paréntesis para agrupar sinónimos
+- Comillas para frases de más de una palabra
+- Incluí variantes del cargo
+- ${ubicacion.length?`Incluí ubicación: (${ubicacion.map(u=>`"${u}"`).join(' OR ')})`:'No incluyas filtro de ubicación'}
+- ${modalidad?`Incluí: "${modalidad}"`:''}
+- ${plataforma==='Google X-Ray'?'Comenzá con site:linkedin.com/in/':''}
+- ${plataforma==='GitHub'?'Usá sintaxis GitHub: location:, language:':''}
+- Solo devolvé el string booleano, sin texto adicional`};
+}
+
+async function callAPI(prompt){
+  const res=await fetch('/api/generate',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({prompt})
+  });
+  if(!res.ok){const err=await res.json();throw new Error(err.error||'Error en servidor');}
+  const data=await res.json();
+  return data.result;
+}
+
+async function generarBooleano(){
+  const cargo=document.getElementById('cargo').value.trim();
+  const jd=document.getElementById('jd-text').value.trim();
+  const jdActivo=document.getElementById('jd-check').checked&&jd.length>20;
+  if(!cargo&&!jdActivo){showOutput('Ingresá al menos el cargo o pegá una job description.','error');return;}
+  const{plataforma,cargo:cargoFinal,prompt}=buildPrompt(false);
+  setLoading(true);
+  try{
+    const texto=await callAPI(prompt);
+    lastResult=texto;showOutput(texto,'ok',plataforma);saveHistory(cargoFinal,plataforma,texto);
+  }catch(e){showOutput('Error: '+e.message,'error');}
+  setLoading(false);
+}
+
+async function refinar(){
+  if(!lastResult)return;
+  const btn=document.getElementById('refine-btn');
+  btn.disabled=true;btn.textContent='Refinando...';
+  const{plataforma,prompt}=buildPrompt(true);
+  try{
+    const texto=await callAPI(prompt);
+    lastResult=texto;showOutput(texto,'ok',plataforma);
+  }catch(e){alert('Error al refinar: '+e.message);}
+  btn.disabled=false;btn.textContent='Refinar con más sinónimos';
+}
+
+function setLoading(on){
+  const btn=document.getElementById('gen-btn');
+  btn.disabled=on;btn.textContent=on?'Generando...':'Generar búsqueda booleana';
+  if(on){
+    document.getElementById('output').textContent='La IA está armando tu búsqueda...';
+    document.getElementById('output').className='output-box loading';
+    document.getElementById('copy-btn').style.display='none';
+    document.getElementById('action-row').style.display='none';
+    document.getElementById('platform-badge').style.display='none';
+  }
+}
+
+function showOutput(text,state,platform){
+  const out=document.getElementById('output');
+  out.textContent=text;
+  out.className='output-box'+(state==='error'?' error':'');
+  if(state==='ok'){
+    document.getElementById('copy-btn').style.display='block';
+    document.getElementById('action-row').style.display='flex';
+    const badge=document.getElementById('platform-badge');
+    badge.style.display='inline-flex';badge.textContent=platform;
+  }
+}
+
+function copiar(){
+  navigator.clipboard.writeText(document.getElementById('output').textContent).then(()=>{
+    const btn=document.getElementById('copy-btn');btn.textContent='¡Copiado!';
+    setTimeout(()=>btn.textContent='Copiar',2000);
+  });
+}
+
+function limpiarTodo(){
+  ['cargo','industria','pais','ciudad','contexto'].forEach(id=>document.getElementById(id).value='');
+  skillsTags.length=0;excluirTags.length=0;
+  ['skills-wrap','excluir-wrap'].forEach(id=>document.getElementById(id).querySelectorAll('.tag').forEach(t=>t.remove()));
+  document.getElementById('jd-text').value='';
+  document.getElementById('output').textContent='Completá los campos y generá tu búsqueda';
+  document.getElementById('output').className='output-box empty';
+  document.getElementById('copy-btn').style.display='none';
+  document.getElementById('action-row').style.display='none';
+  document.getElementById('platform-badge').style.display='none';
+  lastResult='';
+}
+
+function saveHistory(cargo,plataforma,string){
+  history.unshift({cargo,plataforma,string,ts:new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})});
+  if(history.length>6)history.pop();renderHistory();
+}
+function renderHistory(){
+  const sec=document.getElementById('history-section');
+  const list=document.getElementById('history-list');
+  sec.style.display='block';
+  list.innerHTML=history.map((h,i)=>`
+    <div>
+      <div class="history-label">${h.ts} · ${h.cargo} · ${h.plataforma}</div>
+      <div class="history-item" onclick="loadHistory(${i})">${h.string.substring(0,160)}${h.string.length>160?'…':''}</div>
+    </div>`).join('');
+}
+function loadHistory(i){
+  lastResult=history[i].string;showOutput(history[i].string,'ok',history[i].plataforma);
+}
+</script>
+</body>
+</html>
